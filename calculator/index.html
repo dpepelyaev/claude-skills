@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькулятор экономии токенов</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --border: #2a2a2a;
+    --accent: #6366f1;
+    --accent-glow: rgba(99, 102, 241, 0.15);
+    --accent-dim: rgba(99, 102, 241, 0.6);
+    --text: #ffffff;
+    --text-muted: #888888;
+    --text-dim: #555555;
+    --green: #22c55e;
+    --green-bg: rgba(34, 197, 94, 0.08);
+    --green-border: rgba(34, 197, 94, 0.25);
+    --red: #ef4444;
+    --yellow: #eab308;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 16px 80px;
+    line-height: 1.5;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 720px;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .badge {
+    display: inline-block;
+    background: var(--accent-glow);
+    border: 1px solid var(--accent-dim);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    font-size: clamp(24px, 5vw, 36px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 10px;
+    background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 15px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* Panel */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 20px;
+  }
+
+  .panel-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+  }
+
+  /* Sliders */
+  .slider-group {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .slider-item {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .slider-label {
+    font-size: 14px;
+    color: #ccc;
+    font-weight: 500;
+  }
+
+  .slider-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    min-width: 60px;
+    text-align: right;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+    position: relative;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 0 3px var(--accent-glow);
+    transition: box-shadow 0.15s;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 0 6px var(--accent-glow);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: var(--accent);
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .slider-hint {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  /* Divider with warning */
+  .balance-warning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(234, 179, 8, 0.06);
+    border: 1px solid rgba(234, 179, 8, 0.2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--yellow);
+    margin-top: 20px;
+  }
+
+  .balance-warning span { font-size: 14px; }
+
+  /* Results grid */
+  .results-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 500px) {
+    .results-grid { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: border-color 0.2s;
+  }
+
+  .card:hover { border-color: #3a3a3a; }
+
+  .card.accent-card {
+    border-color: rgba(99, 102, 241, 0.3);
+    background: linear-gradient(135deg, rgba(99,102,241,0.06) 0%, var(--surface2) 100%);
+  }
+
+  .card.green-card {
+    border-color: var(--green-border);
+    background: var(--green-bg);
+  }
+
+  .card-icon { font-size: 18px; margin-bottom: 2px; }
+
+  .card-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+  }
+
+  .card-value {
+    font-size: clamp(22px, 4vw, 30px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+
+  .card-value.green { color: var(--green); }
+  .card-value.accent { color: var(--accent); }
+  .card-value.red { color: var(--red); }
+
+  .card-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .card-sub strong {
+    color: #bbb;
+    font-weight: 600;
+  }
+
+  /* Per-month breakdown */
+  .breakdown {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+
+  .breakdown-title {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 14px;
+  }
+
+  .breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  .breakdown-row:last-child { border-bottom: none; }
+
+  .breakdown-row .left { color: var(--text-muted); }
+  .breakdown-row .right { font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+  .breakdown-row .right.green { color: var(--green); }
+  .breakdown-row .right.red { color: var(--red); }
+
+  /* CTA strip */
+  .cta-strip {
+    background: linear-gradient(135deg, rgba(34,197,94,0.08) 0%, rgba(34,197,94,0.04) 100%);
+    border: 1px solid var(--green-border);
+    border-radius: 12px;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .cta-text {
+    font-size: 14px;
+    color: var(--green);
+    font-weight: 600;
+  }
+
+  .cta-text span { color: #ccc; font-weight: 400; }
+
+  .cta-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--green);
+    color: #000;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    letter-spacing: 0.01em;
+    transition: opacity 0.15s, transform 0.15s;
+    white-space: nowrap;
+  }
+
+  .cta-link:hover { opacity: 0.85; transform: translateY(-1px); }
+
+  /* Price reference */
+  .price-ref {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+
+  .price-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .price-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .price-dot.haiku { background: var(--green); }
+  .price-dot.sonnet { background: var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="badge">Token Optimizer Skill</div>
+    <h1>Калькулятор экономии токенов</h1>
+    <p class="subtitle">Сколько вы теряете, используя Sonnet для всех агентов</p>
+  </div>
+
+  <!-- Sliders panel -->
+  <div class="panel">
+    <div class="panel-title">Параметры вашей системы</div>
+
+    <div class="slider-group">
+      <div class="slider-item">
+        <div class="slider-header">
+          <span class="slider-label">Вызовов subagent в день</span>
+          <span class="slider-value" id="val-calls">100</span>
+        </div>
+        <input type="range" id="sl-calls" min="10" max="500" value="100" step="5">
+        <span class="slider-hint">Explore, grep, SQL, анализ файлов и т.д.</span>
+      </div>
+
+      <div class="slider-item">
+        <div class="slider-header">
+          <span class="slider-label">% разведочных задач → Haiku</span>
+          <span class="slider-value" id="val-haiku">70%</span>
+        </div>
+        <input type="range" id="sl-haiku" min="0" max="100" value="70" step="5">
+        <span class="slider-hint">grep, read, find, SQL-запросы, инвентаризация</span>
+      </div>
+
+      <div class="slider-item">
+        <div class="slider-header">
+          <span class="slider-label">% кодинговых задач → Sonnet</span>
+          <span class="slider-value" id="val-sonnet">30%</span>
+        </div>
+        <input type="range" id="sl-sonnet" min="0" max="100" value="30" step="5">
+        <span class="slider-hint">рефакторинг, написание кода, анализ сложных систем</span>
+      </div>
+    </div>
+
+    <div id="balance-warning" class="balance-warning" style="display:none">
+      <span>⚠️</span>
+      <span>Сумма Haiku + Sonnet превышает 100% — автоматически скорректировано</span>
+    </div>
+
+    <div class="price-ref">
+      <div class="price-tag"><div class="price-dot haiku"></div>Haiku: $0.25 + $1.25 /M токенов</div>
+      <div class="price-tag"><div class="price-dot sonnet"></div>Sonnet: $3 + $15 /M токенов</div>
+      <div class="price-tag">Средний вызов: ~2500 токенов</div>
+    </div>
+  </div>
+
+  <!-- Result cards -->
+  <div class="results-grid">
+    <div class="card">
+      <div class="card-icon">💸</div>
+      <div class="card-label">Сейчас (всё на Sonnet)</div>
+      <div class="card-value red" id="cost-before">$0.00</div>
+      <div class="card-sub" id="cost-before-rub">0 ₽/мес</div>
+    </div>
+
+    <div class="card accent-card">
+      <div class="card-icon">✨</div>
+      <div class="card-label">После оптимизации</div>
+      <div class="card-value accent" id="cost-after">$0.00</div>
+      <div class="card-sub" id="cost-after-rub">0 ₽/мес</div>
+    </div>
+
+    <div class="card green-card">
+      <div class="card-icon">💰</div>
+      <div class="card-label">Экономия в месяц</div>
+      <div class="card-value green" id="savings">$0.00</div>
+      <div class="card-sub" id="savings-rub"><strong>0 ₽</strong>/мес</div>
+    </div>
+
+    <div class="card">
+      <div class="card-icon">📈</div>
+      <div class="card-label">ROI скилла (2000₽)</div>
+      <div class="card-value" id="roi-days">0 дней</div>
+      <div class="card-sub" id="roi-sub">окупаемость</div>
+    </div>
+  </div>
+
+  <!-- Detailed breakdown -->
+  <div class="breakdown">
+    <div class="breakdown-title">Детальный расчёт (в месяц = 30 дней)</div>
+    <div class="breakdown-row">
+      <span class="left">Всего вызовов в месяц</span>
+      <span class="right" id="br-total-calls">3 000</span>
+    </div>
+    <div class="breakdown-row">
+      <span class="left">Вызовов на Haiku</span>
+      <span class="right" id="br-haiku-calls">2 100</span>
+    </div>
+    <div class="breakdown-row">
+      <span class="left">Вызовов на Sonnet</span>
+      <span class="right" id="br-sonnet-calls">900</span>
+    </div>
+    <div class="breakdown-row">
+      <span class="left">Стоимость без оптимизации</span>
+      <span class="right red" id="br-before">$0.00</span>
+    </div>
+    <div class="breakdown-row">
+      <span class="left">Стоимость с оптимизацией</span>
+      <span class="right" id="br-after">$0.00</span>
+    </div>
+    <div class="breakdown-row">
+      <span class="left">Экономия в $</span>
+      <span class="right green" id="br-savings-usd">$0.00</span>
+    </div>
+    <div class="breakdown-row">
+      <span class="left">Экономия в ₽ (курс 90₽/$)</span>
+      <span class="right green" id="br-savings-rub">0 ₽</span>
+    </div>
+    <div class="breakdown-row">
+      <span class="left">Скилл стоит</span>
+      <span class="right">2 000 ₽</span>
+    </div>
+    <div class="breakdown-row">
+      <span class="left">Окупается за</span>
+      <span class="right green" id="br-roi">— дней</span>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-strip">
+    <div class="cta-text">
+      Скилл стоит <strong>2 000 ₽</strong>
+      <span> — один раз, экономия каждый месяц</span>
+    </div>
+    <a href="https://t.me/dpepelyaev" target="_blank" class="cta-link">
+      Купить скилл →
+    </a>
+  </div>
+
+</div>
+
+<script>
+  const RUB_RATE = 90;
+  const SKILL_PRICE_RUB = 2000;
+
+  // Tokens per call (average)
+  const INPUT_TOKENS = 2000;
+  const OUTPUT_TOKENS = 500;
+
+  // Prices per million tokens
+  const HAIKU_INPUT  = 0.25;
+  const HAIKU_OUTPUT = 1.25;
+  const SONNET_INPUT  = 3.0;
+  const SONNET_OUTPUT = 15.0;
+
+  // Cost per single call (in $)
+  function callCostHaiku() {
+    return (INPUT_TOKENS / 1_000_000) * HAIKU_INPUT + (OUTPUT_TOKENS / 1_000_000) * HAIKU_OUTPUT;
+  }
+  function callCostSonnet() {
+    return (INPUT_TOKENS / 1_000_000) * SONNET_INPUT + (OUTPUT_TOKENS / 1_000_000) * SONNET_OUTPUT;
+  }
+
+  const slCalls  = document.getElementById('sl-calls');
+  const slHaiku  = document.getElementById('sl-haiku');
+  const slSonnet = document.getElementById('sl-sonnet');
+
+  function fmtUSD(v) {
+    if (v < 0.01) return '$' + v.toFixed(4);
+    if (v < 1)    return '$' + v.toFixed(3);
+    if (v < 10)   return '$' + v.toFixed(2);
+    return '$' + v.toFixed(2);
+  }
+
+  function fmtRUB(v) {
+    return new Intl.NumberFormat('ru-RU').format(Math.round(v)) + ' ₽';
+  }
+
+  function fmtNum(v) {
+    return new Intl.NumberFormat('ru-RU').format(Math.round(v));
+  }
+
+  function update() {
+    const callsPerDay = parseInt(slCalls.value);
+    let pctHaiku  = parseInt(slHaiku.value) / 100;
+    let pctSonnet = parseInt(slSonnet.value) / 100;
+
+    const warn = document.getElementById('balance-warning');
+    if (pctHaiku + pctSonnet > 1.001) {
+      warn.style.display = 'flex';
+      // cap sonnet so sum = 1
+      pctSonnet = Math.max(0, 1 - pctHaiku);
+    } else {
+      warn.style.display = 'none';
+    }
+
+    const callsPerMonth = callsPerDay * 30;
+    const haikuCalls  = Math.round(callsPerMonth * pctHaiku);
+    const sonnetCalls = Math.round(callsPerMonth * pctSonnet);
+
+    // Cost before: all on Sonnet
+    const costBefore = callsPerMonth * callCostSonnet();
+
+    // Cost after: split between haiku & sonnet
+    const costAfter = haikuCalls * callCostHaiku() + sonnetCalls * callCostSonnet();
+
+    const savings = costBefore - costAfter;
+    const savingsRub = savings * RUB_RATE;
+    const savingsPerDay = savingsRub / 30;
+    const roiDays = savingsPerDay > 0 ? Math.ceil(SKILL_PRICE_RUB / savingsPerDay) : null;
+
+    // Update display values
+    document.getElementById('val-calls').textContent  = fmtNum(callsPerDay);
+    document.getElementById('val-haiku').textContent  = Math.round(pctHaiku * 100) + '%';
+    document.getElementById('val-sonnet').textContent = Math.round(pctSonnet * 100) + '%';
+
+    document.getElementById('cost-before').textContent = fmtUSD(costBefore);
+    document.getElementById('cost-before-rub').textContent = fmtRUB(costBefore * RUB_RATE) + '/мес';
+
+    document.getElementById('cost-after').textContent = fmtUSD(costAfter);
+    document.getElementById('cost-after-rub').textContent = fmtRUB(costAfter * RUB_RATE) + '/мес';
+
+    document.getElementById('savings').textContent = fmtUSD(savings);
+    document.getElementById('savings-rub').innerHTML = '<strong>' + fmtRUB(savingsRub) + '</strong>/мес';
+
+    if (roiDays !== null && roiDays < 365) {
+      document.getElementById('roi-days').textContent = roiDays + ' дн.';
+      document.getElementById('roi-sub').textContent = 'окупаемость';
+    } else if (roiDays !== null) {
+      document.getElementById('roi-days').textContent = (roiDays / 30).toFixed(1) + ' мес';
+      document.getElementById('roi-sub').textContent = 'окупаемость';
+    } else {
+      document.getElementById('roi-days').textContent = '∞';
+      document.getElementById('roi-sub').textContent = 'нет экономии';
+    }
+
+    // Breakdown
+    document.getElementById('br-total-calls').textContent  = fmtNum(callsPerMonth);
+    document.getElementById('br-haiku-calls').textContent  = fmtNum(haikuCalls);
+    document.getElementById('br-sonnet-calls').textContent = fmtNum(sonnetCalls);
+    document.getElementById('br-before').textContent       = fmtUSD(costBefore);
+    document.getElementById('br-after').textContent        = fmtUSD(costAfter);
+    document.getElementById('br-savings-usd').textContent  = fmtUSD(savings);
+    document.getElementById('br-savings-rub').textContent  = fmtRUB(savingsRub);
+    document.getElementById('br-roi').textContent = roiDays !== null
+      ? (roiDays < 365 ? roiDays + ' дней' : (roiDays/30).toFixed(1) + ' месяцев')
+      : '—';
+
+    // Update slider track fill
+    updateTrack(slCalls,  slCalls.min,  slCalls.max);
+    updateTrack(slHaiku,  slHaiku.min,  slHaiku.max);
+    updateTrack(slSonnet, slSonnet.min, slSonnet.max);
+  }
+
+  function updateTrack(input, min, max) {
+    const pct = (input.value - min) / (max - min) * 100;
+    input.style.background = `linear-gradient(to right, #6366f1 ${pct}%, #2a2a2a ${pct}%)`;
+  }
+
+  [slCalls, slHaiku, slSonnet].forEach(sl => sl.addEventListener('input', update));
+
+  update();
+</script>
+</body>
+</html>
