@@ -158,7 +158,6 @@ pm2 start sweep.mjs --name mem-sweeper --cron "*/2 * * * *" --no-autorestart
 
 ## Цена
 
-**1 500 ₽** — разовая установка и настройка под ваш VPS.
 
 Включает:
 - Настройку под ваши процессы (паттерны, protected names)
