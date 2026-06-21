@@ -4,7 +4,9 @@
 
 set -e
 
-SKILL_FILE="$(cd "$(dirname "$0")" && pwd)/skill/token-optimizer.md"
+# Получаем абсолютный путь к папке скрипта
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SKILL_FILE="$SCRIPT_DIR/skill/token-optimizer.md"
 SKILL_NAME="token-optimizer.md"
 
 if [ ! -f "$SKILL_FILE" ]; then
@@ -15,10 +17,13 @@ fi
 
 # Определяем целевую папку .claude/skills/
 # Приоритет: локальный проект → глобальный ~/.claude/
-LOCAL_SKILLS="./.claude/skills"
+# ВАЖНО: используем абсолютные пути для надёжности
+CURRENT_DIR="$(pwd)"
+LOCAL_SKILLS="$CURRENT_DIR/.claude/skills"
 GLOBAL_SKILLS="$HOME/.claude/skills"
 
-if [ -d "./.claude" ]; then
+# Проверяем, есть ли локальная папка .claude в текущей директории
+if [ -d "$CURRENT_DIR/.claude" ]; then
   TARGET_DIR="$LOCAL_SKILLS"
   echo "Найден локальный .claude/ — устанавливаю в проект."
 else

@@ -404,6 +404,16 @@
         <input type="range" id="sl-sonnet" min="0" max="100" value="30" step="5">
         <span class="slider-hint">рефакторинг, написание кода, анализ сложных систем</span>
       </div>
+
+      <!-- БАГ 5: новый слайдер курса рубля -->
+      <div class="slider-item">
+        <div class="slider-header">
+          <span class="slider-label">Курс $/₽</span>
+          <span class="slider-value" id="val-rate">90</span>
+        </div>
+        <input type="range" id="sl-rate" min="70" max="120" value="90" step="1">
+        <span class="slider-hint">Текущий курс доллара к рублю</span>
+      </div>
     </div>
 
     <div id="balance-warning" class="balance-warning" style="display:none">
@@ -477,7 +487,7 @@
       <span class="right green" id="br-savings-usd">$0.00</span>
     </div>
     <div class="breakdown-row">
-      <span class="left">Экономия в ₽ (курс 90₽/$)</span>
+      <span class="left">Экономия в ₽ (курс <span id="br-rate-label">90</span>₽/$)</span>
       <span class="right green" id="br-savings-rub">0 ₽</span>
     </div>
     <div class="breakdown-row">
@@ -504,7 +514,6 @@
 </div>
 
 <script>
-  const RUB_RATE = 90;
   const SKILL_PRICE_RUB = 2000;
 
   // Tokens per call (average)
@@ -528,6 +537,7 @@
   const slCalls  = document.getElementById('sl-calls');
   const slHaiku  = document.getElementById('sl-haiku');
   const slSonnet = document.getElementById('sl-sonnet');
+  const slRate   = document.getElementById('sl-rate');
 
   function fmtUSD(v) {
     if (v < 0.01) return '$' + v.toFixed(4);
@@ -545,22 +555,28 @@
   }
 
   function update() {
-    const callsPerDay = parseInt(slCalls.value);
-    let pctHaiku  = parseInt(slHaiku.value) / 100;
-    let pctSonnet = parseInt(slSonnet.value) / 100;
+    // БАГ 1: NaN-защита через || 0
+    const callsPerDay = parseInt(slCalls.value) || 0;
+    let pctHaiku  = (parseInt(slHaiku.value) || 0) / 100;
+    let pctSonnet = (parseInt(slSonnet.value) || 0) / 100;
+    // БАГ 5: курс из слайдера
+    const rubRate = (parseInt(slRate.value) || 0);
 
     const warn = document.getElementById('balance-warning');
     if (pctHaiku + pctSonnet > 1.001) {
       warn.style.display = 'flex';
-      // cap sonnet so sum = 1
+      // БАГ 4: cap sonnet, обновляем слайдер и текст
       pctSonnet = Math.max(0, 1 - pctHaiku);
+      slSonnet.value = Math.round(pctSonnet * 100);
+      document.getElementById('val-sonnet').textContent = Math.round(pctSonnet * 100) + '%';
     } else {
       warn.style.display = 'none';
     }
 
     const callsPerMonth = callsPerDay * 30;
-    const haikuCalls  = Math.round(callsPerMonth * pctHaiku);
-    const sonnetCalls = Math.round(callsPerMonth * pctSonnet);
+    // БАГ 2: floor для haiku, остаток для sonnet
+    const haikuCalls  = Math.floor(callsPerMonth * pctHaiku);
+    const sonnetCalls = callsPerMonth - haikuCalls;
 
     // Cost before: all on Sonnet
     const costBefore = callsPerMonth * callCostSonnet();
@@ -569,7 +585,8 @@
     const costAfter = haikuCalls * callCostHaiku() + sonnetCalls * callCostSonnet();
 
     const savings = costBefore - costAfter;
-    const savingsRub = savings * RUB_RATE;
+    // БАГ 3 + БАГ 5: используем rubRate из слайдера, ROI только если savings > 0
+    const savingsRub = savings * rubRate;
     const savingsPerDay = savingsRub / 30;
     const roiDays = savingsPerDay > 0 ? Math.ceil(SKILL_PRICE_RUB / savingsPerDay) : null;
 
@@ -577,25 +594,27 @@
     document.getElementById('val-calls').textContent  = fmtNum(callsPerDay);
     document.getElementById('val-haiku').textContent  = Math.round(pctHaiku * 100) + '%';
     document.getElementById('val-sonnet').textContent = Math.round(pctSonnet * 100) + '%';
+    document.getElementById('val-rate').textContent   = rubRate;
 
     document.getElementById('cost-before').textContent = fmtUSD(costBefore);
-    document.getElementById('cost-before-rub').textContent = fmtRUB(costBefore * RUB_RATE) + '/мес';
+    document.getElementById('cost-before-rub').textContent = fmtRUB(costBefore * rubRate) + '/мес';
 
     document.getElementById('cost-after').textContent = fmtUSD(costAfter);
-    document.getElementById('cost-after-rub').textContent = fmtRUB(costAfter * RUB_RATE) + '/мес';
+    document.getElementById('cost-after-rub').textContent = fmtRUB(costAfter * rubRate) + '/мес';
 
     document.getElementById('savings').textContent = fmtUSD(savings);
     document.getElementById('savings-rub').innerHTML = '<strong>' + fmtRUB(savingsRub) + '</strong>/мес';
 
-    if (roiDays !== null && roiDays < 365) {
+    // БАГ 3: roiDays === null → "нет экономии"
+    if (roiDays === null) {
+      document.getElementById('roi-days').textContent = 'нет экономии';
+      document.getElementById('roi-sub').textContent = 'увеличьте % Haiku';
+    } else if (roiDays < 365) {
       document.getElementById('roi-days').textContent = roiDays + ' дн.';
       document.getElementById('roi-sub').textContent = 'окупаемость';
-    } else if (roiDays !== null) {
+    } else {
       document.getElementById('roi-days').textContent = (roiDays / 30).toFixed(1) + ' мес';
       document.getElementById('roi-sub').textContent = 'окупаемость';
-    } else {
-      document.getElementById('roi-days').textContent = '∞';
-      document.getElementById('roi-sub').textContent = 'нет экономии';
     }
 
     // Breakdown
@@ -606,14 +625,16 @@
     document.getElementById('br-after').textContent        = fmtUSD(costAfter);
     document.getElementById('br-savings-usd').textContent  = fmtUSD(savings);
     document.getElementById('br-savings-rub').textContent  = fmtRUB(savingsRub);
+    document.getElementById('br-rate-label').textContent   = rubRate;
     document.getElementById('br-roi').textContent = roiDays !== null
       ? (roiDays < 365 ? roiDays + ' дней' : (roiDays/30).toFixed(1) + ' месяцев')
-      : '—';
+      : 'нет экономии';
 
     // Update slider track fill
     updateTrack(slCalls,  slCalls.min,  slCalls.max);
     updateTrack(slHaiku,  slHaiku.min,  slHaiku.max);
     updateTrack(slSonnet, slSonnet.min, slSonnet.max);
+    updateTrack(slRate,   slRate.min,   slRate.max);
   }
 
   function updateTrack(input, min, max) {
@@ -621,7 +642,7 @@
     input.style.background = `linear-gradient(to right, #6366f1 ${pct}%, #2a2a2a ${pct}%)`;
   }
 
-  [slCalls, slHaiku, slSonnet].forEach(sl => sl.addEventListener('input', update));
+  [slCalls, slHaiku, slSonnet, slRate].forEach(sl => sl.addEventListener('input', update));
 
   update();
 </script>
