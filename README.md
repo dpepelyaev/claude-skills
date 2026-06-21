@@ -1,6 +1,6 @@
 # Token Optimizer для Claude Code
 
-> **Платный скилл · 2000₽** · [Купить / задать вопрос](https://t.me/dpepelyaev)
+> **Платный скилл · 2000₽** · [Купить / задать вопрос](https://t.me/denis201345)
 
 Скилл учит Claude Code правильно выбирать модель для каждого subagent-вызова.
 Результат — снижение расходов на API в 3–5 раз без потери качества.
@@ -100,4 +100,4 @@ token-optimizer/
 
 Вопросы, покупка, кастомизация под ваш стек:
 
-**Telegram:** [t.me/dpepelyaev](https://t.me/dpepelyaev)
+**Telegram:** [t.me/denis201345](https://t.me/denis201345)
